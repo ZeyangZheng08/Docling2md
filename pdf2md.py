@@ -20,14 +20,16 @@ from prompt.text_type_prompt import TEXT_TYPE_PROMPT
 from prompt.table_repair_prompt import TABLE_REPAIR_PROMPT
 from prompt.text_repair_prompt import TEXT_REPAIR_PROMPT
 
-# 加载配置文件
-with open('config.yaml', 'r', encoding='utf-8') as f:
+# Load configuration file (located next to this script)
+script_dir = Path(__file__).parent
+config_path = script_dir / 'config.yaml'
+with open(config_path, 'r', encoding='utf-8') as f:
     config = yaml.safe_load(f)
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# === 配置 === (从配置文件读取)
+# === Configuration === (from configuration file)
 ENABLE_OCR = config['OCR']['enabled']
 DASHSCOPE_API_KEY = config['VLM']['api_key']
 VLM_API_URL = config['VLM']['base_url']
@@ -38,10 +40,9 @@ TEXT_MODEL = config['OPENAI']['model']
 MAX_CONCURRENCY_VLM = config['VLM']['max_concurrency']
 MAX_CONCURRENCY_TEXT = config['OPENAI']['max_concurrency']
 
-input_pdf_path = Path("D:/Personal_Project/SmolDocling/pdfs/APD_Series_203250D.pdf")
+input_pdf_dir = Path("/home/zeyang/Zeyang/AI_Agent/Building_inspection_agent/github/test")
 
 
-# 根据 PDF 文件路径生成哈希值
 def generate_hash_from_file(file_path: Path) -> str:
     md5_hash = hashlib.md5()
     with file_path.open("rb") as f:
@@ -50,21 +51,14 @@ def generate_hash_from_file(file_path: Path) -> str:
     return md5_hash.hexdigest()
 
 
-# 获取哈希值作为子目录名
-pdf_hash = generate_hash_from_file(input_pdf_path)
-output_dir = Path.cwd() / "output" / pdf_hash
-output_dir.mkdir(parents=True, exist_ok=True)
-doc_filename = input_pdf_path.stem
-
-
-# === 获取PDF每页并保存为图片 ===
+# === Convert PDF pages to images ===
 def convert_pdf_to_images(pdf_path: Path, output_dir: Path):
-    # 从配置中获取 Poppler 路径
+    # Get Poppler path from configuration
     poppler_path = Path(config['POPPLER']['path'])
-    # 创建 page 子目录
+    # create a `page` subdirectory
     page_dir = output_dir / "page"
     page_dir.mkdir(parents=True, exist_ok=True)
-    # 使用 pdf2image 将每一页转换为图片
+    # Use pdf2image to convert each page into an image
     pages = convert_from_path(
         pdf_path,
         dpi=300,  # 300 DPI
@@ -73,10 +67,10 @@ def convert_pdf_to_images(pdf_path: Path, output_dir: Path):
     for page_num, page in enumerate(pages, start=1):
         page_image_filename = page_dir / f"page-{page_num}.png"
         page.save(page_image_filename, 'PNG')
-        log.info(f"保存 PDF 第 {page_num} 页：{page_image_filename.resolve()}")
+        log.info(f"Saved PDF page {page_num}: {page_image_filename.resolve()}")
 
 
-# === 图像 + Prompt → Markdown 表格（Qwen）===
+# === Image + Prompt → Markdown table (VLM) ===
 def ask_table_from_image(pil_image: Image.Image, prompt: str = TABLE_REPAIR_PROMPT) -> str:
     try:
         buffered = BytesIO()
@@ -93,11 +87,11 @@ def ask_table_from_image(pil_image: Image.Image, prompt: str = TABLE_REPAIR_PROM
         )
         return completion.choices[0].message.content.strip()
     except Exception as e:
-        log.warning(f"❌ 表格图像修复失败: {e}")
-        return "[表格修复失败]"
+        log.warning(f"❌ Table image repair failed: {e}")
+        return "[Table repair failed]"
 
 
-# === 图片描述 ===
+# === Image description ===
 def ask_image_vlm_base64(pil_image: Image.Image, prompt: str = VLM_PROMPT) -> str:
     try:
         buffered = BytesIO()
@@ -114,16 +108,16 @@ def ask_image_vlm_base64(pil_image: Image.Image, prompt: str = VLM_PROMPT) -> st
         )
         return completion.choices[0].message.content.strip()
     except Exception as e:
-        log.warning(f"图像API失败: {e}")
-        return "[图像描述失败]"
+        log.warning(f"Image API failed: {e}")
+        return "[Image description failed]"
 
 def needs_repair(text: str, threshold: int = 30) -> bool:
-    # 匹配连续的纯英文字符串（不包含中文或空格）
+    # Match long continuous English-like sequences (no spaces or CJK)
     matches = re.findall(r'[A-Za-z0-9,.\-()]{%d,}' % threshold, text)
     return len(matches) > 0
 
 
-# 大模型进行英文分词修复
+# === English segmentation repair (large model) ===
 def ask_repair_text(text: str) -> str:
     try:
         client = OpenAI(api_key=TEXT_API_KEY, base_url=TEXT_API_URL)
@@ -135,10 +129,10 @@ def ask_repair_text(text: str) -> str:
         repaired = response.choices[0].message.content.strip()
         return repaired
     except Exception as e:
-        log.warning(f"❌ 英文分词失败: {e}")
-        return text  # 失败时返回原文
+        log.warning(f"❌ English segmentation failed: {e}")
+        return text  # Return original text on failure
 
-# === 判断文本类型（标题 or 正文）===
+# === Determine text type (heading or paragraph) ===
 def ask_if_heading(text: str) -> str:
     try:
         client = OpenAI(api_key=TEXT_API_KEY, base_url=TEXT_API_URL)
@@ -150,10 +144,10 @@ def ask_if_heading(text: str) -> str:
         answer = response.choices[0].message.content.strip().lower()
         return "heading" if "heading" in answer else "paragraph"
     except Exception as e:
-        log.warning(f"判断标题/正文失败: {e}")
+        log.warning(f"Failed to determine heading/body: {e}")
         return "paragraph"
 
-# === 表格图像切块工具（按固定行高裁切） ===
+# === Split table image into rows (fixed row height) ===
 def split_table_image_rows(pil_img: Image.Image, row_height: int = 400) -> list:
     width, height = pil_img.size
     slices = []
@@ -164,7 +158,7 @@ def split_table_image_rows(pil_img: Image.Image, row_height: int = 400) -> list:
     return slices
 
 
-# === 拼接不符合尺寸限制的切块 ===
+# === Merge small chunks that don't meet size limits ===
 def merge_small_chunks(chunks: list, min_height: int = 300, min_width: int = 20) -> list:
     merged_chunks = []
     temp_chunk = None
@@ -172,26 +166,26 @@ def merge_small_chunks(chunks: list, min_height: int = 300, min_width: int = 20)
     for chunk in chunks:
         width, height = chunk.size
 
-        # 如果当前块尺寸不足，则尝试拼接上下块
+        # If the current chunk is too small, try to concatenate it with the next/previous
         if height < min_height or width < min_width:
             if temp_chunk is None:
                 temp_chunk = chunk
             else:
-                # 拼接上下块
+                # concatenate vertically
                 new_chunk = Image.new("RGB", (max(temp_chunk.width, chunk.width), temp_chunk.height + chunk.height))
                 new_chunk.paste(temp_chunk, (0, 0))
                 new_chunk.paste(chunk, (0, temp_chunk.height))
                 temp_chunk = new_chunk
         else:
-            # 如果有未处理的临时块，先保存
+            # if there is an unprocessed temp chunk, save it first
             if temp_chunk is not None:
                 merged_chunks.append(temp_chunk)
                 temp_chunk = None
             merged_chunks.append(chunk)
 
-    # 添加最后一个临时块（如果有）
+    # add the last temp chunk (if any)
     if temp_chunk is not None:
-        # 如果整个表格图片的高度低于最小高度，则按最低高度计算
+        # if the whole table image height is below minimum, pad to minimum height
         if temp_chunk.height < min_height:
             new_chunk = Image.new("RGB", (temp_chunk.width, max(temp_chunk.height, 20)))
             new_chunk.paste(temp_chunk, (0, 0))
@@ -202,7 +196,7 @@ def merge_small_chunks(chunks: list, min_height: int = 300, min_width: int = 20)
     return merged_chunks
 
 
-# === 获取元素的边界框 ===
+# === Get element bounding box ===
 def get_bbox(element):
     if hasattr(element, 'prov') and element.prov:
         bbox = element.prov[0].bbox
@@ -216,9 +210,16 @@ def get_bbox(element):
     return None
 
 
-# === 主流程 ===
-def convert_pdf_to_markdown_with_images():
+# === Main process ===
+def convert_pdf_to_markdown_with_images(input_pdf_path: Path):
     start_time = time.time()
+
+    # Get hash from file to name output subdirectory
+    pdf_hash = generate_hash_from_file(input_pdf_path)
+    output_dir = Path.cwd() / "output" / pdf_hash
+    output_dir.mkdir(parents=True, exist_ok=True)
+    doc_filename = input_pdf_path.stem
+
     pipeline_options = PdfPipelineOptions()
     pipeline_options.images_scale = 2.0
     pipeline_options.generate_picture_images = True
@@ -232,7 +233,7 @@ def convert_pdf_to_markdown_with_images():
     conv_res = doc_converter.convert(input_pdf_path)
     document = conv_res.document
 
-    markdown_lines_items = []  # 修复：按元素顺序追加
+    markdown_lines_items = []  # Fix: append by element order
     json_data = []
     table_counter = 0
     picture_counter = 0
@@ -252,7 +253,7 @@ def convert_pdf_to_markdown_with_images():
             pil_img.save(table_image_filename, "PNG")
             table_df: pd.DataFrame = element.export_to_dataframe()
             if not table_df.columns.is_unique or table_df.shape[1] < 2:
-                log.warning(f"\u26a0\ufe0f 表格 {table_counter} 结构异常，使用 Qwen 多轮图像推理修复")
+                log.warning(f"\u26a0\ufe0f Table {table_counter} structure abnormal, using Qwen multi-step VLM repair")
                 sub_images = split_table_image_rows(pil_img)
                 sub_images = merge_small_chunks(sub_images)
                 chunk_futures = []
@@ -269,8 +270,8 @@ def convert_pdf_to_markdown_with_images():
                         else:
                             full_md_lines.extend(lines[2:])
                     except Exception as e:
-                        log.warning(f"表格分块处理失败: {e}")
-                markdown = f"<!-- 表格 {table_counter} 使用 Qwen 修复 -->\n" + "\n".join(full_md_lines)
+                        log.warning(f"Table chunk processing failed: {e}")
+                markdown = f"<!-- Table {table_counter} repaired using VLM -->\n" + "\n".join(full_md_lines)
                 markdown_lines_items.append(markdown)
                 json_data.append({
                     "type": "table",
@@ -305,13 +306,13 @@ def convert_pdf_to_markdown_with_images():
                 "page": element.prov[0].page_no,
                 "bbox": bbox
             }))
-            markdown_lines_items.append(future)  # 占位
+            markdown_lines_items.append(future)  # placeholder
         else:
             if hasattr(element, "text") and element.text:
                 text = element.text.strip()
                 if text:
                     if needs_repair(text):
-                        log.info(f"发现异常无空格段，调用分词模型修复: {text}")
+                        log.info(f"Detected abnormal no-space segment, calling segmentation repair: {text}")
                         text = ask_repair_text(text)
                     future = text_executor.submit(ask_if_heading, text)
                     futures.append((future, "text", {
@@ -350,7 +351,7 @@ def convert_pdf_to_markdown_with_images():
                     "bbox": meta["bbox"]
                 })
         except Exception as e:
-            log.warning(f"并发任务失败: {e}")
+            log.warning(f"Concurrent task failed: {e}")
 
     vlm_executor.shutdown(wait=True)
     text_executor.shutdown(wait=True)
@@ -372,9 +373,39 @@ def convert_pdf_to_markdown_with_images():
     with json_file.open("w", encoding="utf-8") as f:
         json.dump(json_data, f, indent=2, ensure_ascii=False)
 
-    log.info(f"完成 PDF 解析，耗时 {time.time() - start_time:.2f} 秒")
-    log.info(f"Markdown 文件：{markdown_file.resolve()}")
-    log.info(f"JSON 文件：{json_file.resolve()}")
+    log.info(f"Completed PDF parsing, took {time.time() - start_time:.2f} seconds")
+    log.info(f"Markdown file: {markdown_file.resolve()}")
+    log.info(f"JSON file: {json_file.resolve()}")
+
+
+# === Batch processing function ===
+def process_multiple_pdfs():
+    """Process all PDF files in the input directory"""
+
+    batch_start_time = time.time()
+
+    # Find all PDF files in the directory
+    pdf_files = list(input_pdf_dir.glob("*.pdf"))
+
+    if not pdf_files:
+        log.warning(f"No PDF files found in {input_pdf_dir}")
+        return
+
+    log.info(f"Found {len(pdf_files)} PDF files to process")
+
+    # Process each PDF file
+    for pdf_file in pdf_files:
+        log.info(f"Processing PDF: {pdf_file.name}")
+        try:
+            # Call the existing conversion function for each PDF
+            convert_pdf_to_markdown_with_images(pdf_file)
+        except Exception as e:
+            log.error(f"Failed to process {pdf_file.name}: {e}")
+            continue
+
+    total_time = time.time() - batch_start_time
+    log.info(f"Batch processing completed. Total time: {total_time:.2f} seconds")
+
 
 if __name__ == "__main__":
-    convert_pdf_to_markdown_with_images()
+    process_multiple_pdfs()

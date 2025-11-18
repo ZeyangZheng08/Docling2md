@@ -1,82 +1,83 @@
 # Docling2md
 
-将 PDF 文档结构化为 Markdown 和 JSON 格式的轻量级工具，支持表格修复、图像描述、标题识别和结构化抽取。
+A lightweight tool to convert PDF documents into structured Markdown and JSON. It supports table repair, image captioning, heading recognition, and structured data extraction.
 
 ---
 
-## 项目简介
-**Docling2md** 是一个文档理解和转换工具，基于 [Docling](https://github.com/docling-project/docling.git) 框架，并集成了视觉语言模型（VLM）和大语言模型（LLM），可实现：
+## Project Overview
 
-- 将 PDF 转换为结构化 Markdown 文本
-- 自动提取标题 / 正文结构
-- 使用 VLM 自动描述图片
-- 修复表格图像识别失败问题（表格切片 + Qwen-VL 修复）
-- 输出结构化 JSON，便于下游知识图谱、搜索索引等任务
+**Docling2md** is a document understanding and conversion tool built on the [Docling](https://github.com/docling-project/docling.git) framework and integrated with vision-language models (VLMs) and large language models (LLMs). Key features include:
+
+- Converting PDFs into structured Markdown
+- Automatically extracting headings and paragraph structure
+- Using a VLM to generate image captions
+- Repairing tables when table image recognition fails (table slicing + VLM reconstruction)
+- Emitting structured JSON for downstream tasks such as knowledge graphs and search indexes
 
 ---
 
-## 安装与环境配置
+## Installation and Environment
 
-### 1. 克隆仓库
+### 1. Clone the repository
 ```bash
 git clone https://github.com/your-username/Docling2md.git
 cd Docling2md
 ```
 
-### 2. 安装依赖
+### 2. Install dependencies
 
-#### 2.1 安装 Python 依赖项：
+#### 2.1 Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
-#### 2.2 配置 **poppler**
-解压 `poppler` 压缩包至项目根目录。
+#### 2.2 Configure **poppler**
+Extract the `poppler` archive to the project root or install it system-wide.
 
-### 3. 配置文件（`config.yaml`）
+### 3. Configuration (`config.yaml`)
 ```yaml
 OPENAI:
   api_key: "<your-deepseek-api-key>"
   base_url: "https://api.deepseek.com"
-  model: "deepseek-chat"  #默认使用deepseek的chat模型
-  max_concurrency: 10  #chat大模型最大并发量
+  model: "deepseek-chat"  # default chat model for DeepSeek
+  max_concurrency: 10  # maximum concurrent requests for the chat model
 
 VLM:
   api_key: "<your-dashscope-api-key>"
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-  model: "qwen2.5-vl-72b-instruct"  #默认使用qwen视觉模型
-  max_concurrency: 3  #视觉大模型最大并发量
+  model: "qwen2.5-vl-72b-instruct"  # default VLM model
+  max_concurrency: 3  # maximum concurrent VLM requests
 
 OCR:
   enabled: true
 
 POPPLER:
-  path: "D:/your_path_to/poppler/Library/bin"  #将poppler.zip解压至项目根目录
+  path: "D:/your_path_to/poppler/Library/bin"  # path to extracted poppler binaries
 ```
 
 ---
 
-## 使用方法
+## Usage
 
-### 1. 修改读取的PDF文件路径
+### 1. Modify the input PDF path
 ```bash
 input_pdf_path = Path("D:/Docling2md/your_path_to/.pdf")
 ```
 
-### 2. 运行主程序
+### 2. Run the main script
 ```bash
 python pdf2md.py
 ```
-或将 `convert_pdf_to_markdown_with_images()` 嵌入你的主流程中。
+Or embed `convert_pdf_to_markdown_with_images()` into your own pipeline.
 
-### 3. 结果输出
-- Markdown 文件：`output/<pdf_hash>/<hash>.md`
-- JSON 文件：`output/<pdf_hash>/<hash>.json`
-- 页面图像：`output/<pdf_hash>/page/page-*.png`
-- 表格与图片图像：`output/<pdf_hash>/*.png`
+### 3. Outputs
+- Markdown file: `output/<pdf_hash>/<hash>.md`
+- JSON file: `output/<pdf_hash>/<hash>.json`
+- Page images: `output/<pdf_hash>/page/page-*.png`
+- Table and image files: `output/<pdf_hash>/*.png`
 
 ---
 
-### 4. 流程示意：
+### 4. Workflow diagram
 ```mermaid
 graph TD
     A[PDF Document] --> B[DocumentConverter]
@@ -99,26 +100,27 @@ graph TD
     K --> M[JSON Metadata]
     K --> N[Extracted Images]
 ```
-## 功能亮点
 
-- **PDF 布局解析**：使用 Docling 提取表格、图片、文本等元素
-- **表格图像修复**：支持表格列名冲突自动切片 + VLM 重建
-- **图像描述理解**：VLM 自动输出图片标题并写入 Markdown
-- **文本分类**：调用 DeepSeek 判断是否为标题，决定 Markdown 格式
-- **结构化输出**：统一 JSON 格式，包含 `type`, `level`, `page_number`, `bbox` 等字段
+## Highlights
+
+- **PDF layout parsing**: Uses Docling to extract tables, images, and text elements
+- **Table image repair**: Supports automatic slicing + VLM reconstruction for problematic tables
+- **Image captioning**: VLM generates short captions and embeds them in Markdown
+- **Text classification**: Uses DeepSeek to decide whether text is a heading or paragraph
+- **Structured output**: Produces unified JSON that includes fields like `type`, `level`, `page_number`, and `bbox`
 
 ---
 
-## 项目结构
+## Project structure
 ```
 .
 ├── pdf2md.py
 ├── config.yaml
 ├── prompt/
-│   ├── VLM_prompt.py  #用于添加图片描述 
-│   ├── text_type_prompt.py  #用于判断文本标题/段落
-│   ├── text_repair_prompt.py  #用于修复异常无空格文本
-│   └── table_repair_prompt.py  #用于修复异常表格
+│   ├── VLM_prompt.py  # used for image caption prompts
+│   ├── text_type_prompt.py  # used to decide heading vs paragraph
+│   ├── text_repair_prompt.py  # used to repair text without spaces
+│   └── table_repair_prompt.py  # used to repair problematic table images
 ├── output/
 │   └── <pdf_hash>/
 │       ├── page/
@@ -130,7 +132,7 @@ graph TD
 
 ---
 
-## 使用视觉模型修复表格示例效果展示
+## Example: table repair using vision models
 
 ![709f27681f3bf94551b729283c54046a-table-17](https://github.com/user-attachments/assets/ab583ea5-b8b2-4466-a6ed-ea8b43f21bd9)
 
@@ -144,15 +146,15 @@ graph TD
 
 ---
 
-## 联系方式
-如有建议或问题，欢迎通过 issue 或 PR 提交反馈。
+## Contact
+If you have suggestions or issues, please open an issue or submit a PR.
 
 ---
 
 ## License
-本项目遵循 MIT 协议。
+This project is licensed under the MIT License.
 
 ---
 
-> 本项目集成 Qwen-VL 与 DeepSeek 模型，仅供学术研究与技术验证用途。
+> This project integrates Qwen-VL and DeepSeek models and is intended for academic research and technical validation only.
 

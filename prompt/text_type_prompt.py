@@ -1,23 +1,22 @@
-#  TEXT_TYPE_PROMPT = "以下是一段文档中的文字，请判断它是标题（Heading）还是正文段落（Paragraph）。仅回答 'Heading' 或 'Paragraph'。\n\n文字内容："
 TEXT_TYPE_PROMPT = """
-以下是一段文档中的文字，请判断它是“标题”（Heading）还是“正文段落”（Paragraph）。
-请仅返回 'Heading' 或 'Paragraph'。
+Below is a piece of text extracted from a document. Determine whether it is a "Heading" or a "Paragraph".
+Please return only 'Heading' or 'Paragraph'.
 
-判断规则如下：
-1. 若该文字是一个段落、列表项（如以“·”、“-”、“•”等开头），或者陈述性的句子，应判断为 'Paragraph'。
-2. 若该文字具有以下特征，则判断为 'Heading'：
-   - 字符数较短，通常不超过 15 个词；
-   - 不以句号、逗号或冒号结尾；
-   - 没有完整的主谓结构；
-   - 通常不以 bullet 符号或数字编号（如 '·'、'1.'）开头；
+Decision rules:
+1. If the text is a paragraph, a list item (e.g., starting with '·', '-', '•'), or a declarative sentence, classify it as 'Paragraph'.
+2. Classify as 'Heading' if the text has the following characteristics:
+   - Short length, typically no more than 15 words;
+   - Does not end with a period, comma, or colon;
+   - Lacks a complete subject-verb structure;
+   - Usually does not start with a bullet symbol or numeric prefix (e.g., '·', '1.').
 
-举例：
-- “Features” → Heading  
-- “·Low capacitance designs” → Paragraph  
-- “Figure 2. Output Power vs Input Voltage” → Heading  
-- “The device supports high reliability in harsh conditions.” → Paragraph  
+Examples:
+- "Features" → Heading
+- "·Low capacitance designs" → Paragraph
+- "Figure 2. Output Power vs Input Voltage" → Heading
+- "The device supports high reliability in harsh conditions." → Paragraph
 
-请根据上述规则判断以下内容：
+Decide for the following text:
 
-文字内容：
+Text:
 """

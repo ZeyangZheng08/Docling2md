@@ -1,18 +1,18 @@
 TEXT_REPAIR_PROMPT = """
-请对以下连续字符串进行合理的英文分词处理，使其成为可读的英文句子或短语。
-注意：
-- 保持原始内容含义不变。
-- 不要添加或删除任何内容。
-- 仅在需要的地方加入空格，使其成为自然语言表达。
-- 若文本中出现某个字母无法判断语义，考虑特殊字符，例如文本中可能出现将 '●' 识别为 'O‘ 等类似的情况，注意分别。
+Please perform reasonable English word segmentation on the following continuous string so that it becomes a readable English sentence or phrase.
+Notes:
+- Preserve the original meaning.
+- Do not add or remove any characters.
+- Insert spaces only where necessary to make natural language.
+- If a character's intended meaning is ambiguous, consider possible special-character substitutions (for example, a '●' might represent the letter 'O') and handle accordingly.
 
-示例输入：
+Example input:
 THISISATESTSTRING
 
-示例输出：
+Example output:
 THIS IS A TEST STRING
 
-请直接输出文本，不要增加任何解释或是其余内容。
+Output only the processed text; do not include any explanations or extra content.
 
-待处理文本：
+Text to process:
 """

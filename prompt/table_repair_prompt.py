@@ -1,7 +1,7 @@
 TABLE_REPAIR_PROMPT = """
-请你将这张图中的表格内容转换为标准 Markdown 管道表格（即使用竖线 `|` 分隔列），并遵循以下要求：
+Convert the table content in this image into a standard Markdown pipe table (use vertical bars `|` to separate columns), and follow these requirements:
 
-1. 如果表格中存在合并单元格（无论是横向或纵向合并），请将其内容复制补全到所有相关的格子中，使每一行的列数一致；
-2. 表格中必须包含表头，并在表头下方添加对齐的分隔符（例如 `| --- | --- | ... |`）；
-3. 不要添加任何多余内容，如解释说明、标题或格式说明，只输出纯粹的 Markdown 表格文本。
+1. If the table contains merged cells (horizontal or vertical), duplicate and fill the merged cell content into all corresponding cells so that each row has the same number of columns.
+2. The table must include a header row, and you must include an aligned separator line under the header (for example: `| --- | --- | ... |`).
+3. Do not add any extra content such as explanations, titles, or formatting notes — output only the raw Markdown table text.
 """
