@@ -60,7 +60,7 @@ POPPLER:
 
 ### 1. Modify the input PDF path
 ```bash
-input_pdf_path = Path("D:/Docling2md/your_path_to/.pdf")
+input_pdf_path = Path("D:/Docling2md/your_path_to_pdf_folder")
 ```
 
 ### 2. Run the main script

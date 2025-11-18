@@ -40,7 +40,7 @@ TEXT_MODEL = config['OPENAI']['model']
 MAX_CONCURRENCY_VLM = config['VLM']['max_concurrency']
 MAX_CONCURRENCY_TEXT = config['OPENAI']['max_concurrency']
 
-input_pdf_dir = Path("/home/zeyang/Zeyang/AI_Agent/Building_inspection_agent/github/test")
+input_pdf_dir = Path("D:/Docling2md/your_path_to_pdf_folder")
 
 
 def generate_hash_from_file(file_path: Path) -> str:
